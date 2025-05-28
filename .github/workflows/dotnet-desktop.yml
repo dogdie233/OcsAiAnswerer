@@ -1,0 +1,69 @@
+name: Build OcsAiAnswerer
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  DOTNET_VERSION: '9.x'
+
+jobs:
+  build-nativeaot-win64-release:
+    runs-on: windows-latest
+    name: NativeAOT Win64 Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish with NativeAOT (Win64 Release)
+        run: >
+          dotnet publish ./OcsAiAnswerer/OcsAiAnswerer.csproj
+          -r win-x64
+          -c Release
+          /p:PublishAot=true
+          --output ./publish-win64-aot
+
+      - name: Package
+        run: |
+          cd publish-win64-aot
+          Compress-Archive -Path OcsAiAnswerer.exe,appsettings.json -DestinationPath ../OcsAiAnswerer-win64-aot.zip
+
+      - name: Upload NativeAOT Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-win64-aot
+          path: OcsAiAnswerer-win64-aot.zip
+
+  build-non-nativeaot-any-debug:
+    runs-on: windows-latest
+    name: No NativeAOT AnyCPU Debug
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish without NativeAOT (AnyCPU Debug)
+        run: >
+          dotnet publish ./OcsAiAnswerer/OcsAiAnswerer.csproj
+          -c Debug
+          --output ./publish-any-debug
+
+      - name: Package all output files
+        run: |
+          cd publish-any-debug
+          Compress-Archive -Path * -DestinationPath ../OcsAiAnswerer-any-debug.zip
+
+      - name: Upload Debug Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-any-debug
+          path: OcsAiAnswerer-any-debug.zip
