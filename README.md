@@ -45,7 +45,7 @@ OcsAiAnswerer 是一个可以和[ocsjs](https://github.com/ocsjs/ocsjs)配合的
         "headers": {
             "Content-Type": "application/json"
         },
-        "handler": "return (res)=>res.error ? [res.question, undefined] : [res.question, res.answers.join('###')]"
+        "handler": "return (res)=>res.error ? [res.question, undefined] : [res.question, res.answers.join('#')]"
     }
 ]
 ```
