@@ -7,8 +7,6 @@ using Microsoft.Extensions.AI;
 
 using OpenAI;
 
-using OpenAIChatClient = OpenAI.Chat.ChatClient;
-
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -61,7 +59,6 @@ public record QuestionModel(string Title, string? Type, string? Options);
 public record ResponseModel(string Question, string[]? Answer, string? Error);
 
 #endregion
-
 
 #region Services
 
@@ -189,7 +186,7 @@ internal static class ChatClientFactory
         if (!string.IsNullOrEmpty(endpoint))
             options.Endpoint = new Uri(endpoint);
 
-        return new OpenAIChatClient(model, new ApiKeyCredential(key), options).AsIChatClient();
+        return new OpenAI.Chat.ChatClient(model, new ApiKeyCredential(key), options).AsIChatClient();
     }
 }
 
