@@ -55,12 +55,15 @@ jobs:
         run: >
           dotnet publish ./OcsAiAnswerer/OcsAiAnswerer.csproj
           -c Debug
+          -p:PublishAot=false
+          -p:PublishSingleFile=true
+          --no-self-contained
           --output ./publish-any-debug
 
-      - name: Package all output files
+      - name: Package
         run: |
           cd publish-any-debug
-          Compress-Archive -Path * -DestinationPath ../OcsAiAnswerer-any-debug.zip
+          Compress-Archive -Path OcsAiAnswerer.exe,OcsAiAnswerer.pdb,appsettings.json,appsettings.Development.json -DestinationPath ../OcsAiAnswerer-any-debug.zip
 
       - name: Upload Debug Artifact
         uses: actions/upload-artifact@v4
