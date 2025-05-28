@@ -56,7 +56,7 @@ app.Run();
 
 public record QuestionModel(string Title, string? Type, string? Options);
 
-public record ResponseModel(string Question, string[]? Answer, string? Error);
+public record ResponseModel(string Question, string[]? Answers, string? Error);
 
 #endregion
 
