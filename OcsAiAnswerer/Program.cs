@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 
 using GenerativeAI.Microsoft;
 
+using Microsoft.Extensions.Caching.Memory;
+
 using Microsoft.Extensions.AI;
 
 using OpenAI;
@@ -24,6 +26,8 @@ builder.Services.AddCors(options =>
             .SetIsOriginAllowedToAllowWildcardSubdomains();
     });
 });
+
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 
@@ -65,9 +69,9 @@ public record ResponseModel(string Question, string[]? Answers, string? Error);
 internal class ChatClientProvider
 {
     public List<IChatClient> Clients { get; init; } = [];
-    
+
     public ChatClientProvider(IConfiguration config, ILogger<ChatClientProvider> logger)
-    {       
+    {
         var section = config.GetSection("AiProviders");
         foreach (var child in section.GetChildren())
         {
@@ -80,7 +84,7 @@ internal class ChatClientProvider
     }
 }
 
-internal class AnswerService(ChatClientProvider chatClient, ILogger<AnswerService> logger)
+internal class AnswerService(ChatClientProvider chatClient, IMemoryCache cache, ILogger<AnswerService> logger)
 {
     private const string SystemPrompt = """
                                         You are a helpful AI assistant. You are powerful, intelligent, all-knowing, and highly proficient in all areas of knowledge. The user will present you with questions they encounter during their studies. Your task is to help them solve these questions accurately. The user will usually provide the **question** and its **type**, such as `single`, `multiple`, `judgement`, or `completion`. Please follow these rules:
@@ -98,16 +102,20 @@ internal class AnswerService(ChatClientProvider chatClient, ILogger<AnswerServic
         AllowMultipleToolCalls = false,
         ResponseFormat = ChatResponseFormat.Text
     };
-    
+
     public async Task<string[]> SolveAsync(string question, string? type, string? options, CancellationToken ct)
     {
+        var cacheKey = $"{question}-{type}-{options}";
+        if (cache.TryGetValue(cacheKey, out string[]? cachedAnswer) && cachedAnswer != null)
+            return cachedAnswer;
+
         var user = $"Here is my question:\n{question} (Type: {type}){(string.IsNullOrEmpty(options) ? "(No options)" : "\n" + options)}";
         ChatMessage[] chats =
         [
             new(ChatRole.System, SystemPrompt),
             new(ChatRole.User, user)
         ];
-        
+
         foreach (var client in chatClient.Clients)
         {
             try
@@ -122,7 +130,9 @@ internal class AnswerService(ChatClientProvider chatClient, ILogger<AnswerServic
                 }
                 logger.LogDebug("Chat client {Client} finished successfully with response: {Text}", client.GetType().Name, response.Text);
 
-                return response.Text.Split('\n', options: StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                var answer = response.Text.Split('\n', options: StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                cache.Set(cacheKey, answer, TimeSpan.FromMinutes(30)); 
+                return answer;
             }
             catch (TaskCanceledException)
             {
@@ -132,7 +142,6 @@ internal class AnswerService(ChatClientProvider chatClient, ILogger<AnswerServic
             {
                 logger.LogError(ex, "Error while processing question with client {Client}, try next ...", client.GetType().Name);
             }
-            
         }
 
         throw new NoAnswerException();
@@ -169,10 +178,10 @@ internal static class ChatClientFactory
     private static GenerativeAIChatClient? BuildGoogleAi(IConfigurationSection config)
     {
         const string defaultModel = "gemini-2.0-flash";
-        
+
         if (config["ApiKey"] is not { } key) return null;
         var model = config["Model"] ?? defaultModel;
-        
+
         return new GenerativeAIChatClient(key, model, false);
     }
 
