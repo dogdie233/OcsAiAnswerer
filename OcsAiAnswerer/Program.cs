@@ -96,6 +96,8 @@ internal class AnswerService(ChatClientProvider chatClient, IMemoryCache cache, 
                                         Your responses should be concise and directly usable by the user. Do not provide any extra explanation unless the user explicitly asks for it.
                                         """;
 
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
+
     private readonly ChatOptions _chatOptions = new()
     {
         MaxOutputTokens = 2048,
@@ -106,45 +108,46 @@ internal class AnswerService(ChatClientProvider chatClient, IMemoryCache cache, 
     public async Task<string[]> SolveAsync(string question, string? type, string? options, CancellationToken ct)
     {
         var cacheKey = $"{question}-{type}-{options}";
-        if (cache.TryGetValue(cacheKey, out string[]? cachedAnswer) && cachedAnswer != null)
-            return cachedAnswer;
 
-        var user = $"Here is my question:\n{question} (Type: {type}){(string.IsNullOrEmpty(options) ? "(No options)" : "\n" + options)}";
-        ChatMessage[] chats =
-        [
-            new(ChatRole.System, SystemPrompt),
-            new(ChatRole.User, user)
-        ];
-
-        foreach (var client in chatClient.Clients)
+        return await cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            try
+            entry.AbsoluteExpirationRelativeToNow = CacheExpiration;
+
+            var user = $"Here is my question:\n{question} (Type: {type}){(string.IsNullOrEmpty(options) ? "(No options)" : "\n" + options)}";
+            ChatMessage[] chats =
+            [
+                new(ChatRole.System, SystemPrompt),
+                new(ChatRole.User, user)
+            ];
+
+            foreach (var client in chatClient.Clients)
             {
-                logger.LogDebug("Processing {Type} question {Title} with client {Client}", type, question, client.GetType().Name);
-                var response = await client.GetResponseAsync(chats, _chatOptions, ct);
-                if (response.FinishReason == null || response.FinishReason.Value != ChatFinishReason.Stop)
+                try
                 {
-                    logger.LogWarning("Chat client {Client} did not finish properly: {Reason}, Text: {Text}",
-                        client.GetType().Name, response.FinishReason, response.Text);
-                    continue;
+                    logger.LogDebug("Processing {Type} question {Title} with client {Client}", type, question, client.GetType().Name);
+                    var response = await client.GetResponseAsync(chats, _chatOptions, ct);
+                    if (response.FinishReason == null || response.FinishReason.Value != ChatFinishReason.Stop)
+                    {
+                        logger.LogWarning("Chat client {Client} did not finish properly: {Reason}, Text: {Text}",
+                            client.GetType().Name, response.FinishReason, response.Text);
+                        continue;
+                    }
+                    logger.LogDebug("Chat client {Client} finished successfully with response: {Text}", client.GetType().Name, response.Text);
+
+                    return response.Text.Split('\n', options: StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                 }
-                logger.LogDebug("Chat client {Client} finished successfully with response: {Text}", client.GetType().Name, response.Text);
+                catch (TaskCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error while processing question with client {Client}, try next ...", client.GetType().Name);
+                }
+            }
 
-                var answer = response.Text.Split('\n', options: StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                cache.Set(cacheKey, answer, TimeSpan.FromMinutes(30)); 
-                return answer;
-            }
-            catch (TaskCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error while processing question with client {Client}, try next ...", client.GetType().Name);
-            }
-        }
-
-        throw new NoAnswerException();
+            throw new NoAnswerException();
+        }) ?? throw new NoAnswerException();
     }
 }
 
