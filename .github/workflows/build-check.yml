@@ -1,0 +1,24 @@
+name: .NET PR Build Check
+
+on:
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build with warnings as errors
+        run: dotnet build --no-restore -warnaserror
