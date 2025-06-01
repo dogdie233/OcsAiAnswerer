@@ -4,27 +4,13 @@
 
 OcsAiAnswerer 是一个可以和[ocsjs](https://github.com/ocsjs/ocsjs)配合的，基于多种 AI 大模型的答题辅助服务，支持 Google Gemini、OpenAI、DeepSeek 等主流 AI 平台。用户可通过简单配置，快速接入多种 AI 服务，实现自动化答题、智能解答等功能。
 
-## 安装教程
-
-### Windows
-
-1. 前往 [Release 页面](https://github.com/dogdie233/OcsAiAnswerer/releases) 下载最新的 `OcsAiAnswerer-win64-aot.zip`。
-2. 解压到任意目录。
-
-### Linux
-
-1. 安装最新的 [.NET Runtime](https://dotnet.microsoft.com/zh-cn/download/dotnet)（必须 9.0 及以上）。
-2. 前往 [Release 页面](https://github.com/dogdie233/OcsAiAnswerer/releases) 下载最新的 `OcsAiAnswerer-any.zip`。
-3. 解压到任意目录。
-
 ## 使用教程
 
-1. 解压后，找到并编辑 `appsettings.json` 文件（用记事本打开），配置你的 AI 平台密钥和参数（详见下表）。
-2. 运行程序：
-   - Windows：双击 `OcsAiAnswerer.exe` 或在命令行运行
-   - Linux：在终端运行 `dotnet OcsAiAnswerer.dll`
-3. 如果你是第一次用这个程序，还需要配置ocsjs的题库，依次在ocsjs的面板点击 `通用` -> `全局设置` -> `题库配置` 填入配置（配置参考下面，一般来说可以直接复制）
-4. 完成后ocsjs将会使用本程序作为题库搜索题目
+1. 前往 [Release 页面](https://github.com/dogdie233/OcsAiAnswerer/releases) 找到适用于你的架构的构建（找不到需要自己构建）
+2. 解压后，找到并编辑 `appsettings.json` 文件（用记事本打开），配置你的 AI 平台密钥和参数（详见下表）。
+3. 启动！直接运行可执行文件即可
+4. 如果你是第一次用这个程序，还需要配置ocsjs的题库，依次在ocsjs的面板点击 `通用` -> `全局设置` -> `题库配置` 填入配置（配置参考下面，一般来说可以直接复制）
+5. 完成后ocsjs将会使用本程序作为题库搜索题目
 
 ## `ocsjs` 参考配置
 
@@ -84,6 +70,15 @@ OcsAiAnswerer 是一个可以和[ocsjs](https://github.com/ocsjs/ocsjs)配合的
   ]
 }
 ```
+
+## 自行构建
+
+1. 下载[.NET SDK](https://dotnet.microsoft.com/zh-cn/download/dotnet)
+2. 克隆本项目
+3. cd 到仓库根目录
+4. 执行命令`dotnet publish ./OcsAiAnswerer/OcsAiAnswerer.csproj -c Release --output Build`
+   - 如果构建失败可以试试`dotnet publish ./OcsAiAnswerer/OcsAiAnswerer.csproj -c Release -p:PublishAot=false --no-self-contained -p:PublishSingleFile=true --output ./Build`
+6. 构建成功后在`Build`文件夹就可以找到你的构建产物了
 
 ## 常见问题
 
