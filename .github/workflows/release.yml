@@ -67,29 +67,46 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rid: [linux-x64, linux-arm64]
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Publish ${{ matrix.rid }}
-        run: dotnet publish ${{ env.PROJECT_PATH }} -r ${{ matrix.rid }} -c Release /p:PublishAot=true --output ./publish-${{ matrix.rid }}
+      - name: Publish linux-x64
+        run: dotnet publish ${{ env.PROJECT_PATH }} -r linux-x64 -c Release /p:PublishAot=true --output ./publish-linux-x64
       - name: Zip Artifact
         run: |
-          cd publish-${{ matrix.rid }}
-          zip ../OcsAiAnswerer-${{ matrix.rid }}.zip OcsAiAnswerer appsettings.json
+          cd publish-linux-x64
+          zip ../OcsAiAnswerer-linux-x64.zip OcsAiAnswerer appsettings.json
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OcsAiAnswerer-${{ matrix.rid }}
-          path: OcsAiAnswerer-${{ matrix.rid }}.zip
+          name: OcsAiAnswerer-linux-x64
+          path: OcsAiAnswerer-linux-x64.zip
+  
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish linux-arm64
+        run: dotnet publish ${{ env.PROJECT_PATH }} -r linux-arm64 -c Release /p:PublishAot=true --output ./publish-linux-arm64
+      - name: Zip Artifact
+        run: |
+          cd publish-linux-arm64
+          zip ../OcsAiAnswerer-linux-arm64.zip OcsAiAnswerer appsettings.json
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-linux-arm64
+          path: OcsAiAnswerer-linux-arm64.zip
 
   release:
-    needs: [build-win-x64, build-macos, build-linux]
+    needs: [build-win-x64, build-macos, build-linux, build-linux-arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
