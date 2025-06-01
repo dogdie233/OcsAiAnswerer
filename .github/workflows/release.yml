@@ -33,18 +33,6 @@ jobs:
           name: OcsAiAnswerer-win-x64
           path: OcsAiAnswerer-win-x64.zip
 
-      - name: Publish any (No AOT, AnyCPU, SingleFile)
-        run: dotnet publish ${{ env.PROJECT_PATH }} -c Release -p:PublishAot=false --no-self-contained -p:PublishSingleFile=true --output ./publish-any
-      - name: Zip Artifact (any)
-        run: |
-          cd publish-any
-          Compress-Archive -Path OcsAiAnswerer.exe,appsettings.json -DestinationPath ../OcsAiAnswerer-any.zip
-      - name: Upload Artifact (any)
-        uses: actions/upload-artifact@v4
-        with:
-          name: OcsAiAnswerer-any
-          path: OcsAiAnswerer-any.zip
-
   build-macos:
     runs-on: macos-latest
     strategy:
