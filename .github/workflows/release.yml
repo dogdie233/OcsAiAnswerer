@@ -5,6 +5,9 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+
 env:
   DOTNET_VERSION: '9.x'
   PROJECT_PATH: ./OcsAiAnswerer/OcsAiAnswerer.csproj
