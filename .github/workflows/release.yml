@@ -1,0 +1,107 @@
+name: Multi-platform Release Build
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  DOTNET_VERSION: '9.x'
+  PROJECT_PATH: ./OcsAiAnswerer/OcsAiAnswerer.csproj
+
+jobs:
+  build-win-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish win-x64 (NativeAOT)
+        run: dotnet publish ${{ env.PROJECT_PATH }} -r win-x64 -c Release /p:PublishAot=true --output ./publish-win-x64
+      - name: Zip Artifact (win-x64)
+        run: |
+          cd publish-win-x64
+          Compress-Archive -Path OcsAiAnswerer.exe,appsettings.json -DestinationPath ../OcsAiAnswerer-win-x64.zip
+      - name: Upload Artifact (win-x64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-win-x64
+          path: OcsAiAnswerer-win-x64.zip
+
+      - name: Publish any (No AOT, AnyCPU, SingleFile)
+        run: dotnet publish ${{ env.PROJECT_PATH }} -c Release -p:PublishAot=false --no-self-contained -p:PublishSingleFile=true --output ./publish-any
+      - name: Zip Artifact (any)
+        run: |
+          cd publish-any
+          Compress-Archive -Path OcsAiAnswerer.exe,appsettings.json -DestinationPath ../OcsAiAnswerer-any.zip
+      - name: Upload Artifact (any)
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-any
+          path: OcsAiAnswerer-any.zip
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        rid: [osx-x64, osx-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish ${{ matrix.rid }}
+        run: dotnet publish ${{ env.PROJECT_PATH }} -r ${{ matrix.rid }} -c Release /p:PublishAot=true --output ./publish-${{ matrix.rid }}
+      - name: Zip Artifact
+        run: |
+          cd publish-${{ matrix.rid }}
+          zip ../OcsAiAnswerer-${{ matrix.rid }}.zip OcsAiAnswerer appsettings.json
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-${{ matrix.rid }}
+          path: OcsAiAnswerer-${{ matrix.rid }}.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rid: [linux-x64, linux-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish ${{ matrix.rid }}
+        run: dotnet publish ${{ env.PROJECT_PATH }} -r ${{ matrix.rid }} -c Release /p:PublishAot=true --output ./publish-${{ matrix.rid }}
+      - name: Zip Artifact
+        run: |
+          cd publish-${{ matrix.rid }}
+          zip ../OcsAiAnswerer-${{ matrix.rid }}.zip OcsAiAnswerer appsettings.json
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OcsAiAnswerer-${{ matrix.rid }}
+          path: OcsAiAnswerer-${{ matrix.rid }}.zip
+
+  release:
+    needs: [build-win-x64, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-artifacts/**/OcsAiAnswerer-*.zip
